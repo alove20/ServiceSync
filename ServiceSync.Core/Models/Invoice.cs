@@ -7,7 +7,7 @@ public class Invoice
     public Guid Id { get; set; }
     public Guid CreatorId { get; set; }
     public Guid JobRequestId { get; set; }
-    public DateTime EstimateReady { get; set; }
+    public DateTime? EstimateReady { get; set; }
     public DateTime? EstimateApproved { get; set; }
     public string? EstimateApprovedIP { get; set; }
     public DateTime? PaymentDueDate { get; set; }

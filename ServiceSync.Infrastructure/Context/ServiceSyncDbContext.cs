@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ServiceSync.Core.Models;
+using System.Reflection;
 
 namespace ServiceSync.Infrastructure.Context;
 
@@ -20,82 +21,6 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        base.OnModelCreating(modelBuilder);
-
-        modelBuilder.Entity<CompanyUser>()
-           .HasKey(cu => new { cu.CompanyId, cu.ContactId });
-        modelBuilder.Entity<CompanyUser>()
-           .HasOne(cu => cu.Company)
-           .WithMany(c => c.Users)
-           .HasForeignKey(cu => cu.CompanyId);
-        modelBuilder.Entity<CompanyUser>()
-           .HasOne(cu => cu.User)
-           .WithMany(c => c.UserCompanies)
-           .HasForeignKey(cu => cu.ContactId);
-
-        modelBuilder.Entity<CompanyClient>()
-           .HasKey(cc => new { cc.CompanyId, cc.ContactId });
-        modelBuilder.Entity<CompanyClient>()
-           .HasOne(cc => cc.Company)
-           .WithMany(c => c.Clients)
-           .HasForeignKey(cc => cc.CompanyId);
-        modelBuilder.Entity<CompanyClient>()
-           .HasOne(cc => cc.Client)
-           .WithMany(c => c.ClientCompanies)
-           .HasForeignKey(cc => cc.ContactId);
-
-        modelBuilder.Entity<CompanyJobRequest>()
-           .HasKey(cc => new { cc.CompanyId, cc.JobRequestId });
-        modelBuilder.Entity<CompanyJobRequest>()
-           .HasOne(cjr => cjr.Company)
-           .WithMany(c => c.JobRequests)
-           .HasForeignKey(cc => cc.CompanyId);
-        modelBuilder.Entity<CompanyJobRequest>()
-           .HasOne(cjr => cjr.JobRequest)
-           .WithMany(c => c.Companies)
-           .HasForeignKey(cc => cc.JobRequestId);
-
-        modelBuilder.Entity<JobRequestInvoice>()
-            .HasKey(cc => new { cc.JobRequestId, cc.InvoiceId });
-        modelBuilder.Entity<JobRequestInvoice>()
-            .HasOne(jri => jri.JobRequest)
-            .WithMany(jr => jr.Invoices)
-            .HasForeignKey(jri => jri.JobRequestId);
-        modelBuilder.Entity<JobRequestInvoice>()
-            .HasOne(jri => jri.Invoice)
-            .WithMany(jr => jr.JobRequests)
-            .HasForeignKey(jri => jri.InvoiceId);
-
-        modelBuilder.Entity<UserJobRequest>()
-            .HasKey(ujr => new { ujr.UserId, ujr.JobRequestId });
-        modelBuilder.Entity<UserJobRequest>()
-            .HasOne(ujr => ujr.User)
-            .WithMany(c => c.JobRequests)
-            .HasForeignKey(ujr => ujr.UserId);
-        modelBuilder.Entity<UserJobRequest>()
-            .HasOne(ujr => ujr.JobRequest)
-            .WithMany(jr => jr.Users)
-            .HasForeignKey(ujr => ujr.JobRequestId);
-
-        modelBuilder.Entity<InvoiceLineItem>()
-            .HasKey(ili => new { ili.InvoiceId, ili.LineItemId });
-        modelBuilder.Entity<InvoiceLineItem>()
-            .HasOne(ili => ili.LineItem)
-            .WithOne(li => li.InvoiceLineItem)
-            .HasForeignKey<InvoiceLineItem>(ili => ili.LineItemId);
-
-        modelBuilder.Entity<LineItem>()
-            .HasKey(li => new { li.Id });
-        modelBuilder.Entity<LineItem>()
-            .HasOne(li => li.LineItemType)
-            .WithMany(lit => lit.LineItems)
-            .HasForeignKey(li => li.LineItemTypeId);
-
-        modelBuilder.Entity<Invoice>()
-            .HasKey(i => new { i.Id });
-        modelBuilder.Entity<Invoice>()
-            .HasMany(i => i.InvoiceLineItems)
-            .WithOne(ili => ili.Invoice)
-            .HasForeignKey(ili => ili.InvoiceId);
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
     }
 }
