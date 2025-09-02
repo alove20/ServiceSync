@@ -11,7 +11,8 @@ public class Contact
     public string LastName { get; set; } = string.Empty;
     [MaxLength(255)]
     public string Email { get; set; } = string.Empty;
-    public virtual ICollection<CompanyUser> Companies { get; set; } = [];
+    public virtual ICollection<CompanyUser> UserCompanies { get; set; } = [];
+    public virtual ICollection<CompanyClient> ClientCompanies { get; set; } = [];
     public virtual ICollection<UserJobRequest> JobRequests { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;

@@ -11,6 +11,8 @@ public class Invoice
     public DateTime? EstimateApproved { get; set; }
     public string? EstimateApprovedIP { get; set; }
     public DateTime? PaymentDueDate { get; set; }
+    public ICollection<JobRequestInvoice> JobRequests { get; set; } = [];
+    public ICollection<InvoiceLineItem> LineItems { get; set; } = [];
     public DateTime CreateAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

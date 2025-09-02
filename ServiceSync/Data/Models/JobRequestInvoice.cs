@@ -3,7 +3,7 @@
 public class JobRequestInvoice
 {
     public Guid JobRequestId { get; set; }
-    public virtual JobRequest JobRequest { get; set; } = null!;
+    public virtual JobRequest? JobRequest { get; set; }
     public Guid InvoiceId { get; set; }
-    public virtual Invoice Invoice { get; set; } = null!;
+    public virtual Invoice? Invoice { get; set; }
 }

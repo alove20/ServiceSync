@@ -13,6 +13,8 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
     public DbSet<Contact> Contacts { get; set; }
     public DbSet<JobRequest> JobRequests { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
+    public DbSet<LineItem> LineItems { get; set; }
+    public DbSet<InvoiceLineItem> InvoiceLineItems { get; set; }
     public DbSet<JobRequestInvoice> JobRequestInvoices { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -27,7 +29,7 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
            .HasForeignKey(cu => cu.CompanyId);
         modelBuilder.Entity<CompanyUser>()
            .HasOne(cu => cu.User)
-           .WithMany(c => c.Companies)
+           .WithMany(c => c.UserCompanies)
            .HasForeignKey(cu => cu.ContactId);
 
         modelBuilder.Entity<CompanyClient>()
@@ -36,6 +38,10 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
            .HasOne(cc => cc.Company)
            .WithMany(c => c.Clients)
            .HasForeignKey(cc => cc.CompanyId);
+        modelBuilder.Entity<CompanyClient>()
+           .HasOne(cc => cc.Client)
+           .WithMany(c => c.ClientCompanies)
+           .HasForeignKey(cc => cc.ContactId);
 
         modelBuilder.Entity<CompanyJobRequest>()
            .HasKey(cc => new { cc.CompanyId, cc.JobRequestId });
@@ -43,6 +49,10 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
            .HasOne(cjr => cjr.Company)
            .WithMany(c => c.JobRequests)
            .HasForeignKey(cc => cc.CompanyId);
+        modelBuilder.Entity<CompanyJobRequest>()
+           .HasOne(cjr => cjr.JobRequest)
+           .WithMany(c => c.Companies)
+           .HasForeignKey(cc => cc.JobRequestId);
 
         modelBuilder.Entity<JobRequestInvoice>()
             .HasKey(cc => new { cc.JobRequestId, cc.InvoiceId });
@@ -50,6 +60,10 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
             .HasOne(jri => jri.JobRequest)
             .WithMany(jr => jr.Invoices)
             .HasForeignKey(jri => jri.JobRequestId);
+        modelBuilder.Entity<JobRequestInvoice>()
+            .HasOne(jri => jri.Invoice)
+            .WithMany(jr => jr.JobRequests)
+            .HasForeignKey(jri => jri.InvoiceId);
 
         modelBuilder.Entity<UserJobRequest>()
             .HasKey(ujr => new { ujr.UserId, ujr.JobRequestId });
@@ -61,5 +75,23 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
             .HasOne(ujr => ujr.JobRequest)
             .WithMany(jr => jr.Users)
             .HasForeignKey(ujr => ujr.JobRequestId);
+
+        modelBuilder.Entity<InvoiceLineItem>()
+            .HasKey(ili => new { ili.InvoiceId, ili.LineItemId });
+        modelBuilder.Entity<InvoiceLineItem>()
+            .HasOne(ili => ili.Invoice)
+            .WithMany(i => i.LineItems)
+            .HasForeignKey(ili => ili.InvoiceId);
+        modelBuilder.Entity<InvoiceLineItem>() 
+            .HasOne(ili => ili.LineItem)
+            .WithMany(li => li.Invoices)
+            .HasForeignKey(ili => ili.LineItemId);
+
+        modelBuilder.Entity<LineItem>()
+            .HasKey(li => new { li.Id });
+        modelBuilder.Entity<LineItem>()
+            .HasOne(li => li.LineItemType)
+            .WithMany(lit => lit.LineItems)
+            .HasForeignKey(li => li.LineItemTypeId);
     }
 }

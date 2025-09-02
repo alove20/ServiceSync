@@ -1,12 +1,12 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿namespace ServiceSync.Data.Models;
 
-namespace ServiceSync.Data.Models;
 public class InvoiceLineItem
 {
-    [Key]
-    public Guid Id { get; set; }
-    [MaxLength(50)]
-    public string Name { get; set; } = string.Empty;
-    public decimal Price { get; set; } = 0;
-    public Guid InvoiceLineItemTypeId {  get; set; }
+    public Guid InvoiceId { get; set; }
+    public virtual Invoice? Invoice { get; set; }
+    public Guid LineItemId { get; set; }
+    public virtual LineItem? LineItem { get; set; }
+    public int Quantity { get; set; }
+    public decimal PriceOverride { get; set; }
+    public string Notes { get; set; } = string.Empty;
 }
