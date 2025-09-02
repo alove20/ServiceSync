@@ -14,6 +14,7 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
     public DbSet<JobRequest> JobRequests { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
     public DbSet<LineItem> LineItems { get; set; }
+    public DbSet<LineItemType> LineItemTypes { get; set; }
     public DbSet<InvoiceLineItem> InvoiceLineItems { get; set; }
     public DbSet<JobRequestInvoice> JobRequestInvoices { get; set; }
 
@@ -79,13 +80,9 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
         modelBuilder.Entity<InvoiceLineItem>()
             .HasKey(ili => new { ili.InvoiceId, ili.LineItemId });
         modelBuilder.Entity<InvoiceLineItem>()
-            .HasOne(ili => ili.Invoice)
-            .WithMany(i => i.LineItems)
-            .HasForeignKey(ili => ili.InvoiceId);
-        modelBuilder.Entity<InvoiceLineItem>() 
             .HasOne(ili => ili.LineItem)
-            .WithMany(li => li.Invoices)
-            .HasForeignKey(ili => ili.LineItemId);
+            .WithOne(li => li.InvoiceLineItem)
+            .HasForeignKey<InvoiceLineItem>(ili => ili.LineItemId);
 
         modelBuilder.Entity<LineItem>()
             .HasKey(li => new { li.Id });
@@ -93,5 +90,12 @@ public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options
             .HasOne(li => li.LineItemType)
             .WithMany(lit => lit.LineItems)
             .HasForeignKey(li => li.LineItemTypeId);
+
+        modelBuilder.Entity<Invoice>()
+            .HasKey(i => new { i.Id });
+        modelBuilder.Entity<Invoice>()
+            .HasMany(i => i.InvoiceLineItems)
+            .WithOne(ili => ili.Invoice)
+            .HasForeignKey(ili => ili.InvoiceId);
     }
 }

@@ -8,7 +8,8 @@ public class LineItem
     [MaxLength(50)]
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; } = 0;
-    public Guid LineItemTypeId {  get; set; }
+    public Guid InvoiceLineItemId {  get; set; }
+    public virtual InvoiceLineItem? InvoiceLineItem { get; set; }
+    public Guid LineItemTypeId { get; set; }
     public virtual LineItemType? LineItemType { get; set; }
-    public virtual ICollection<InvoiceLineItem> Invoices { get; set; } = [];
 }
