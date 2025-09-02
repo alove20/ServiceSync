@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ServiceSync.Data.Models;
+using ServiceSync.Core.Models;
 
-namespace ServiceSync.Data.Context;
+namespace ServiceSync.Infrastructure.Context;
 
 public class ServiceSyncDbContext(DbContextOptions<ServiceSyncDbContext> options) : DbContext(options)
 {

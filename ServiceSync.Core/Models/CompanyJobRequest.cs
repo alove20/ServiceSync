@@ -1,4 +1,4 @@
-﻿namespace ServiceSync.Data.Models;
+﻿namespace ServiceSync.Core.Models;
 
 public class CompanyJobRequest
 {

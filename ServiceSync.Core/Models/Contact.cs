@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace ServiceSync.Data.Models;
+namespace ServiceSync.Core.Models;
 public class Contact
 {
     [Key]

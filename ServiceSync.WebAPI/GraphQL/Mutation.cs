@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ServiceSync.Data.Context;
-using ServiceSync.Data.Models;
+using ServiceSync.Core.Models;
+using ServiceSync.Infrastructure.Context;
 
 namespace ServiceSync.WebAPI.GraphQL;
 
