@@ -17,8 +17,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.UpdatedAt).IsRequired();
         builder.HasOne(u => u.Contact)
-               .WithOne(c => c.User)
-               .HasForeignKey<Contact>(c => c.Id)
-               .OnDelete(DeleteBehavior.Cascade);
+            .WithOne(c => c.User)
+            .HasForeignKey<Contact>(c => c.Id);
+        builder
+            .HasOne(u => u.Contact)
+            .WithOne(c => c.User)
+            .HasForeignKey<User>(u => u.Id)
+            .HasPrincipalKey<Contact>(c => c.Id);
     }
 }

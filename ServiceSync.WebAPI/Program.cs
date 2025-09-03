@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ServiceSync.Infrastructure.Context;
 using ServiceSync.WebApi.GraphQL;
+using ServiceSync.WebApi.Services;
 using ServiceSync.WebApi.Settings;
 using System.Text;
 
@@ -16,8 +17,9 @@ namespace ServiceSync.WebApi
 
             var jwtSettingsSection = builder.Configuration.GetSection("JwtSettings");
             builder.Services.Configure<JwtSettings>(jwtSettingsSection);
-            var jwtSettings = jwtSettingsSection.Get<JwtSettings>();
+            var jwtSettings = jwtSettingsSection.Get<JwtSettings>()!;
 
+            // --- Authentication & Authorization Setup ---
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -31,7 +33,7 @@ namespace ServiceSync.WebApi
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = jwtSettings!.Issuer,
+                    ValidIssuer = jwtSettings.Issuer,
                     ValidAudience = jwtSettings.Audience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
                 };
@@ -39,27 +41,33 @@ namespace ServiceSync.WebApi
 
             builder.Services.AddAuthorization();
 
+            // --- CORS Policy Setup ---
             var allowedSpecificOrigins = "_myAllowSpecificOrigins";
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy(name: allowedSpecificOrigins,
-                                  policy =>
-                                  {
-                                      policy.AllowAnyOrigin()
-                                            // .WithOrigins("http://localhost:5173", "null") // To allow requests from file:// URLs
-                                            .AllowAnyHeader()
-                                            .AllowAnyMethod();
-                                  });
+                    policy =>
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyHeader()
+                              .AllowAnyMethod();
+                    });
             });
+
+            // --- Service Registrations ---
             builder.Services.AddPooledDbContextFactory<ServiceSyncDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DefaultConnection"),
                     sqlServerOptions => sqlServerOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
                 ));
-            builder.Services.AddAuthentication();
-            builder.Services.AddAuthorization();
 
-            // 2. Add and configure the GraphQL server
+            // *** THIS IS THE NEW LINE ***
+            // Register IHttpContextAccessor to allow access to HttpContext from other services.
+            builder.Services.AddHttpContextAccessor();
+
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
+            // --- GraphQL Server Setup ---
             builder.Services
                .AddGraphQLServer()
                .RegisterDbContextFactory<ServiceSyncDbContext>()
@@ -71,14 +79,12 @@ namespace ServiceSync.WebApi
                .AddSorting();
 
             builder.Services.AddControllers();
-            builder.Services.AddOpenApi();
 
             var app = builder.Build();
 
-            if (app.Environment.IsDevelopment())
-                app.MapOpenApi();
-
+            // --- HTTP Request Pipeline ---
             app.UseHttpsRedirection();
+
             app.UseCors(allowedSpecificOrigins);
             app.UseAuthentication();
             app.UseAuthorization();
@@ -89,3 +95,4 @@ namespace ServiceSync.WebApi
         }
     }
 }
+

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ServiceSync.Core.Models;
+using System.Reflection.Emit;
 
 namespace ServiceSync.Infrastructure.Configurations;
 
@@ -14,5 +15,9 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
         builder.Property(c => c.Email).IsRequired().HasMaxLength(255);
         builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.UpdatedAt).IsRequired();
+        builder
+            .HasOne(c => c.User)
+            .WithOne(u => u.Contact)
+            .HasForeignKey<User>(u => u.Id);
     }
 }

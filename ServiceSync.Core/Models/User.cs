@@ -1,4 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using ServiceSync.Core.Enums;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ServiceSync.Core.Models;
 
@@ -12,8 +14,7 @@ public class User
     public string PasswordHash { get; set; } = string.Empty;
 
     [Required]
-    [MaxLength(50)]
-    public string Role { get; set; } = "User"; // Default role
+    public Role Role { get; set; } = Role.User;
 
     public bool IsEmailVerified { get; set; } = false;
 

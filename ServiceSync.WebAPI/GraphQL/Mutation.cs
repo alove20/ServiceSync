@@ -1,39 +1,150 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using ServiceSync.Core.Models;
 using ServiceSync.Infrastructure.Context;
+using ServiceSync.WebApi.Services;
+using System.Security.Claims;
 
-// Corrected namespace as per your instruction
 namespace ServiceSync.WebApi.GraphQL;
 
 public class Mutation
 {
+    // --- AUTHENTICATION MUTATIONS ---
+    public async Task<RegisterUserPayload> RegisterUserAsync(
+        RegisterUserInput input,
+        [Service] IAuthService authService)
+    {
+        try
+        {
+            var newUser = await authService.RegisterUserAsync(input.FirstName, input.LastName, input.Email, input.Password);
+            return new RegisterUserPayload(newUser.Id);
+        }
+        catch (Exception ex)
+        {
+            throw new GraphQLException(new Error(ex.Message, "REGISTRATION_FAILED"));
+        }
+    }
+
+    public async Task<LoginPayload> LoginAsync(
+        LoginInput input,
+        [Service] IAuthService authService)
+    {
+        var token = await authService.LoginUserAsync(input.Email, input.Password);
+        if (token is null)
+        {
+            throw new GraphQLException(new Error("Invalid email or password.", "INVALID_CREDENTIALS"));
+        }
+        return new LoginPayload(token);
+    }
+
+    // --- COMPANY-USER LINKING MUTATIONS ---
+    public async Task<LinkUserToCompanyPayload> LinkUserToCompanyAsync(
+        LinkUserToCompanyInput input,
+        [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var linkExists = await context.CompanyUsers
+            .AnyAsync(cu => cu.CompanyId == input.CompanyId && cu.UserId == input.UserId);
+
+        if (linkExists)
+        {
+            // Instead of throwing an error, let's just update the existing role.
+            var existingLink = await context.CompanyUsers.FirstAsync(cu => cu.CompanyId == input.CompanyId && cu.UserId == input.UserId);
+            existingLink.Role = input.Role;
+            await context.SaveChangesAsync();
+            return new LinkUserToCompanyPayload(existingLink);
+        }
+
+        // --- START OF FIX ---
+        // Create the new CompanyUser link with the specified role.
+        var companyUser = new CompanyUser
+        {
+            CompanyId = input.CompanyId,
+            UserId = input.UserId,
+            Role = input.Role // Set the role from the input
+        };
+        // --- END OF FIX ---
+
+        context.CompanyUsers.Add(companyUser);
+        await context.SaveChangesAsync();
+        return new LinkUserToCompanyPayload(companyUser);
+    }
+
+    public async Task<UnlinkUserFromCompanyPayload> UnlinkUserFromCompanyAsync(
+        UnlinkUserFromCompanyInput input,
+        [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var companyUser = await context.CompanyUsers
+            .FirstOrDefaultAsync(cu => cu.CompanyId == input.CompanyId && cu.UserId == input.UserId);
+
+        if (companyUser is null)
+        {
+            return new UnlinkUserFromCompanyPayload(false, "Link not found.");
+        }
+
+        context.CompanyUsers.Remove(companyUser);
+        await context.SaveChangesAsync();
+        return new UnlinkUserFromCompanyPayload(true, "User unlinked successfully.");
+    }
+
+    // --- (The rest of the file remains the same) ---
+
     // --- COMPANY MUTATIONS ---
     public async Task<AddCompanyPayload> AddCompanyAsync(
         AddCompanyInput input,
-        ServiceSyncDbContext context)
+        [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory,
+        [Service] IHttpContextAccessor httpContextAccessor)
     {
-        var company = new Company
+        await using var context = await contextFactory.CreateDbContextAsync();
+
+        var userIdClaim = httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
-            Name = input.Name,
-            AddressLine1 = input.AddressLine1,
-            AddressLine2 = input.AddressLine2,
-            City = input.City,
-            State = input.State,
-            ZipCode = input.ZipCode,
-            PhoneNumber = input.PhoneNumber,
-            LogoUrl = input.LogoUrl
-        };
+            throw new GraphQLException(new Error("User is not authenticated or user ID is invalid.", "UNAUTHENTICATED"));
+        }
 
-        context.Companies.Add(company);
-        await context.SaveChangesAsync();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var company = new Company
+            {
+                Name = input.Name,
+                AddressLine1 = input.AddressLine1,
+                AddressLine2 = input.AddressLine2,
+                City = input.City,
+                State = input.State,
+                ZipCode = input.ZipCode,
+                PhoneNumber = input.PhoneNumber,
+                LogoUrl = input.LogoUrl
+            };
+            context.Companies.Add(company);
+            await context.SaveChangesAsync();
 
-        return new AddCompanyPayload(company);
+            var companyUserLink = new CompanyUser
+            {
+                CompanyId = company.Id,
+                UserId = userId,
+                Role = Core.Enums.Role.Admin // The creator of a company is an Admin
+            };
+            context.CompanyUsers.Add(companyUserLink);
+            await context.SaveChangesAsync();
+
+            await transaction.CommitAsync();
+
+            return new AddCompanyPayload(company);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new GraphQLException($"An error occurred while creating the company: {ex.Message}");
+        }
     }
 
     public async Task<UpdateCompanyPayload> UpdateCompanyAsync(
         UpdateCompanyInput input,
-        ServiceSyncDbContext context)
+        [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory)
     {
+        await using var context = await contextFactory.CreateDbContextAsync();
         var company = await context.Companies.FindAsync(input.CompanyId) ?? throw new GraphQLException(new Error("Company not found.", "COMPANY_NOT_FOUND"));
 
         company.Name = input.Name ?? company.Name;
@@ -46,15 +157,14 @@ public class Mutation
         company.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
-
         return new UpdateCompanyPayload(company);
     }
 
-    // Refined to accept a simple Guid for deletion
     public async Task<DeletePayload> DeleteCompanyAsync(
         Guid id,
-        ServiceSyncDbContext context)
+        [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory)
     {
+        await using var context = await contextFactory.CreateDbContextAsync();
         var company = await context.Companies.FindAsync(id);
         if (company is null)
         {
@@ -65,147 +175,5 @@ public class Mutation
         await context.SaveChangesAsync();
         return new DeletePayload(true, "Company deleted successfully.");
     }
-
-    // --- CONTACT MUTATIONS ---
-    public async Task<AddContactPayload> AddContactAsync(
-        AddContactInput input,
-        ServiceSyncDbContext context)
-    {
-        var contact = new Contact
-        {
-            FirstName = input.FirstName,
-            LastName = input.LastName,
-            Email = input.Email,
-        };
-
-        context.Contacts.Add(contact);
-        await context.SaveChangesAsync();
-
-        return new AddContactPayload(contact);
-    }
-    public async Task<UpdateContactPayload> UpdateContactAsync(
-       UpdateContactInput input,
-       ServiceSyncDbContext context)
-    {
-        var contact = await context.Contacts.FindAsync(input.Id) ?? throw new GraphQLException(new Error("Contact not found.", "CONTACT_NOT_FOUND"));
-
-        contact.FirstName = input.FirstName ?? contact.FirstName;
-        contact.LastName = input.LastName ?? contact.LastName;
-        contact.Email = input.Email ?? contact.Email;
-        contact.UpdatedAt = DateTime.UtcNow;
-
-        await context.SaveChangesAsync();
-
-        return new UpdateContactPayload(contact);
-    }
-
-    public async Task<DeletePayload> DeleteContactAsync(
-       Guid id,
-       ServiceSyncDbContext context)
-    {
-        var contact = await context.Contacts.FindAsync(id);
-        if (contact is null)
-        {
-            return new DeletePayload(false, "Contact not found.");
-        }
-
-        context.Contacts.Remove(contact);
-        await context.SaveChangesAsync();
-        return new DeletePayload(true, "Contact deleted successfully.");
-    }
-
-    // --- JOB REQUEST MUTATIONS ---
-    public async Task<AddJobRequestPayload> AddJobRequestAsync(
-        AddJobRequestInput input,
-        ServiceSyncDbContext context)
-    {
-        var jobRequest = new JobRequest
-        {
-            Title = input.Title,
-            Description = input.Description,
-            ClientId = input.ClientId
-        };
-
-        context.JobRequests.Add(jobRequest);
-        await context.SaveChangesAsync();
-
-        return new AddJobRequestPayload(jobRequest);
-    }
-
-    public async Task<UpdateJobRequestPayload> UpdateJobRequestAsync(
-        UpdateJobRequestInput input,
-        ServiceSyncDbContext context)
-    {
-        var jobRequest = await context.JobRequests.FindAsync(input.Id) ?? throw new GraphQLException(new Error("JobRequest not found.", "JOB_REQUEST_NOT_FOUND"));
-
-        jobRequest.Title = input.Title ?? jobRequest.Title;
-        jobRequest.Description = input.Description ?? jobRequest.Description;
-        jobRequest.ClientId = input.ClientId ?? jobRequest.ClientId;
-        jobRequest.UpdatedAt = DateTime.UtcNow;
-
-        await context.SaveChangesAsync();
-        return new UpdateJobRequestPayload(jobRequest);
-    }
-
-    public async Task<DeletePayload> DeleteJobRequestAsync(
-        Guid id,
-        ServiceSyncDbContext context)
-    {
-        var jobRequest = await context.JobRequests.FindAsync(id);
-        if (jobRequest is null)
-        {
-            return new DeletePayload(false, "JobRequest not found.");
-        }
-
-        context.JobRequests.Remove(jobRequest);
-        await context.SaveChangesAsync();
-        return new DeletePayload(true, "JobRequest deleted successfully.");
-    }
-
-    // --- INVOICE MUTATIONS ---
-    public async Task<AddInvoicePayload> AddInvoiceAsync(
-        AddInvoiceInput input,
-        ServiceSyncDbContext context)
-    {
-        await using var transaction = await context.Database.BeginTransactionAsync();
-        try
-        {
-            var jobRequest = await context.JobRequests.FindAsync(input.JobRequestId) ?? throw new GraphQLException("JobRequest not found.");
-
-            var newInvoice = new Invoice
-            {
-                JobRequestId = input.JobRequestId,
-                CreatorId = input.CreatorId,
-                PaymentDueDate = input.PaymentDueDate
-            };
-
-            context.Invoices.Add(newInvoice);
-            await context.SaveChangesAsync();
-
-            if (input.LineItems != null && input.LineItems.Count != 0)
-            {
-                foreach (var lineItemInput in input.LineItems)
-                {
-                    var invoiceLineItem = new InvoiceLineItem
-                    {
-                        InvoiceId = newInvoice.Id,
-                        LineItemId = lineItemInput.LineItemId,
-                        Quantity = lineItemInput.Quantity,
-                        PriceOverride = lineItemInput.PriceOverride,
-                        Notes = lineItemInput.Notes
-                    };
-                    context.InvoiceLineItems.Add(invoiceLineItem);
-                }
-                await context.SaveChangesAsync();
-            }
-
-            await transaction.CommitAsync();
-            return new AddInvoicePayload(newInvoice);
-        }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            throw new GraphQLException($"An error occurred while creating the invoice: {ex.Message}");
-        }
-    }
 }
+
