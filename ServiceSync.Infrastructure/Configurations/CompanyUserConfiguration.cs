@@ -9,7 +9,7 @@ public class CompanyUserConfiguration : IEntityTypeConfiguration<CompanyUser>
     public void Configure(EntityTypeBuilder<CompanyUser> builder)
     {
         builder
-            .HasKey(cu => new { cu.CompanyId, cu.ContactId });
+            .HasKey(cu => new { cu.CompanyId, cu.UserId });
         builder
            .HasOne(cu => cu.Company)
            .WithMany(c => c.Users)
@@ -17,6 +17,6 @@ public class CompanyUserConfiguration : IEntityTypeConfiguration<CompanyUser>
         builder
             .HasOne(cu => cu.User)
             .WithMany(c => c.UserCompanies)
-            .HasForeignKey(cu => cu.ContactId);
+            .HasForeignKey(cu => cu.UserId);
     }
 }

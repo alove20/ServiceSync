@@ -2,22 +2,37 @@
 using ServiceSync.Core.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace ServiceSync.WebAPI.GraphQL;
+namespace ServiceSync.WebApi.GraphQL;
 
 public class Query
 {
     [UseProjection]
     [UseFiltering]
+    [UseSorting]
     public IQueryable<Company> GetCompanies(ServiceSyncDbContext context) =>
         context.Companies.AsNoTracking();
 
     [UseProjection]
     [UseFiltering]
-    public IQueryable<User> GetUsers(ServiceSyncDbContext context) =>
-        context.Users.AsNoTracking();
+    [UseSorting]
+    public IQueryable<Contact> GetContacts(ServiceSyncDbContext context) =>
+        context.Contacts.AsNoTracking();
 
     [UseProjection]
     [UseFiltering]
-    public IQueryable<Contact> GetContacts(ServiceSyncDbContext context) =>
-        context.Contacts.AsNoTracking();
+    [UseSorting]
+    public IQueryable<JobRequest> GetJobRequests(ServiceSyncDbContext context) =>
+        context.JobRequests.AsNoTracking();
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Invoice> GetInvoices(ServiceSyncDbContext context) =>
+        context.Invoices.AsNoTracking();
+
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<LineItem> GetLineItems(ServiceSyncDbContext context) =>
+        context.LineItems.AsNoTracking();
 }

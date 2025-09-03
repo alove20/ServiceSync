@@ -10,7 +10,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceSync.Infrastructure"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceSync.Core", "ServiceSync.Core\ServiceSync.Core.csproj", "{767A1220-E1C0-10F1-15AF-842798080AAD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceSync.WebAPI", "ServiceSync.WebAPI\ServiceSync.WebAPI.csproj", "{64F72A5D-4AE3-B80E-391E-897E0460D634}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceSync.WebApi", "ServiceSync.WebAPI\ServiceSync.WebApi.csproj", "{64F72A5D-4AE3-B80E-391E-897E0460D634}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

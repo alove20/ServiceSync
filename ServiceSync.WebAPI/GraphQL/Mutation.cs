@@ -2,10 +2,12 @@
 using ServiceSync.Core.Models;
 using ServiceSync.Infrastructure.Context;
 
-namespace ServiceSync.WebAPI.GraphQL;
+// Corrected namespace as per your instruction
+namespace ServiceSync.WebApi.GraphQL;
 
 public class Mutation
 {
+    // --- COMPANY MUTATIONS ---
     public async Task<AddCompanyPayload> AddCompanyAsync(
         AddCompanyInput input,
         ServiceSyncDbContext context)
@@ -33,139 +35,177 @@ public class Mutation
         ServiceSyncDbContext context)
     {
         var company = await context.Companies.FindAsync(input.CompanyId) ?? throw new GraphQLException(new Error("Company not found.", "COMPANY_NOT_FOUND"));
+
         company.Name = input.Name ?? company.Name;
         company.AddressLine1 = input.AddressLine1 ?? company.AddressLine1;
+        company.AddressLine2 = input.AddressLine2 ?? company.AddressLine2;
         company.City = input.City ?? company.City;
         company.State = input.State ?? company.State;
         company.ZipCode = input.ZipCode ?? company.ZipCode;
         company.PhoneNumber = input.PhoneNumber ?? company.PhoneNumber;
+        company.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
 
         return new UpdateCompanyPayload(company);
     }
 
-    public async Task<DeleteCompanyPayload> DeleteCompanyAsync(
-        DeleteCompanyInput input,
+    // Refined to accept a simple Guid for deletion
+    public async Task<DeletePayload> DeleteCompanyAsync(
+        Guid id,
         ServiceSyncDbContext context)
     {
-        var company = await context.Companies.FindAsync(input.CompanyId);
-
+        var company = await context.Companies.FindAsync(id);
         if (company is null)
         {
-            return new DeleteCompanyPayload(false, "Company not found.");
+            return new DeletePayload(false, "Company not found.");
         }
 
         context.Companies.Remove(company);
         await context.SaveChangesAsync();
-
-        return new DeleteCompanyPayload(true, "Company successfully deleted.");
+        return new DeletePayload(true, "Company deleted successfully.");
     }
 
-    public async Task<AddUserPayload> AddUserAsync(
-        AddUserInput input,
+    // --- CONTACT MUTATIONS ---
+    public async Task<AddContactPayload> AddContactAsync(
+        AddContactInput input,
         ServiceSyncDbContext context)
     {
-        var user = new User
+        var contact = new Contact
         {
-            Id = input.Id,
-            PasswordHash = "good_password"
+            FirstName = input.FirstName,
+            LastName = input.LastName,
+            Email = input.Email,
         };
 
-        context.Users.Add(user);
+        context.Contacts.Add(contact);
         await context.SaveChangesAsync();
 
-        return new AddUserPayload(user);
+        return new AddContactPayload(contact);
     }
-
-    public async Task<UpdateUserPayload> UpdateUserAsync(
-        UpdateUserInput input,
-        ServiceSyncDbContext context)
+    public async Task<UpdateContactPayload> UpdateContactAsync(
+       UpdateContactInput input,
+       ServiceSyncDbContext context)
     {
-        var user = await context.Users.FindAsync(input.UserId) ?? throw new GraphQLException(new Error("User not found.", "USER_NOT_FOUND"));
-        user.PasswordHash = input.Password;
+        var contact = await context.Contacts.FindAsync(input.Id) ?? throw new GraphQLException(new Error("Contact not found.", "CONTACT_NOT_FOUND"));
+
+        contact.FirstName = input.FirstName ?? contact.FirstName;
+        contact.LastName = input.LastName ?? contact.LastName;
+        contact.Email = input.Email ?? contact.Email;
+        contact.UpdatedAt = DateTime.UtcNow;
 
         await context.SaveChangesAsync();
 
-        return new UpdateUserPayload(user);
+        return new UpdateContactPayload(contact);
     }
 
-    public async Task<DeleteUserPayload> DeleteUserAsync(
-        DeleteUserInput input,
-        ServiceSyncDbContext context)
+    public async Task<DeletePayload> DeleteContactAsync(
+       Guid id,
+       ServiceSyncDbContext context)
     {
-        var user = await context.Users.FindAsync(input.UserId);
-
-        if (user is null)
+        var contact = await context.Contacts.FindAsync(id);
+        if (contact is null)
         {
-            return new DeleteUserPayload(false, "User not found.");
+            return new DeletePayload(false, "Contact not found.");
         }
 
-        context.Users.Remove(user);
+        context.Contacts.Remove(contact);
         await context.SaveChangesAsync();
-
-        return new DeleteUserPayload(true, "User successfully deleted.");
+        return new DeletePayload(true, "Contact deleted successfully.");
     }
 
-    public async Task<LinkUserToCompanyPayload> LinkUserToCompanyAsync(
-        LinkUserToCompanyInput input,
+    // --- JOB REQUEST MUTATIONS ---
+    public async Task<AddJobRequestPayload> AddJobRequestAsync(
+        AddJobRequestInput input,
         ServiceSyncDbContext context)
     {
-        var exists = await context.CompanyUsers
-           .AnyAsync(cu => cu.CompanyId == input.CompanyId && cu.ContactId == input.ContactId);
-
-        if (exists)
+        var jobRequest = new JobRequest
         {
-            throw new GraphQLException(new Error("User is already linked to this company.", "LINK_ALREADY_EXISTS"));
-        }
-
-        var companyUser = new CompanyUser
-        {
-            CompanyId = input.CompanyId,
-            ContactId = input.ContactId
+            Title = input.Title,
+            Description = input.Description,
+            ClientId = input.ClientId
         };
 
-        context.CompanyUsers.Add(companyUser);
+        context.JobRequests.Add(jobRequest);
         await context.SaveChangesAsync();
 
-        var company = await context.Companies.FindAsync(input.CompanyId);
-        var user = await context.Users.FindAsync(input.ContactId);
-
-        return new LinkUserToCompanyPayload(company, user);
+        return new AddJobRequestPayload(jobRequest);
     }
 
-    public async Task<UnlinkUserFromCompanyPayload> UnlinkUserFromCompanyAsync(
-        UnlinkUserFromCompanyInput input,
+    public async Task<UpdateJobRequestPayload> UpdateJobRequestAsync(
+        UpdateJobRequestInput input,
         ServiceSyncDbContext context)
     {
-        var companyUser = await context.CompanyUsers
-           .FirstOrDefaultAsync(cu => cu.CompanyId == input.CompanyId && cu.ContactId == input.ContactId);
+        var jobRequest = await context.JobRequests.FindAsync(input.Id) ?? throw new GraphQLException(new Error("JobRequest not found.", "JOB_REQUEST_NOT_FOUND"));
 
-        if (companyUser is null)
+        jobRequest.Title = input.Title ?? jobRequest.Title;
+        jobRequest.Description = input.Description ?? jobRequest.Description;
+        jobRequest.ClientId = input.ClientId ?? jobRequest.ClientId;
+        jobRequest.UpdatedAt = DateTime.UtcNow;
+
+        await context.SaveChangesAsync();
+        return new UpdateJobRequestPayload(jobRequest);
+    }
+
+    public async Task<DeletePayload> DeleteJobRequestAsync(
+        Guid id,
+        ServiceSyncDbContext context)
+    {
+        var jobRequest = await context.JobRequests.FindAsync(id);
+        if (jobRequest is null)
         {
-            return new UnlinkUserFromCompanyPayload(false, "Link between user and company not found.");
+            return new DeletePayload(false, "JobRequest not found.");
         }
 
-        context.CompanyUsers.Remove(companyUser);
+        context.JobRequests.Remove(jobRequest);
         await context.SaveChangesAsync();
+        return new DeletePayload(true, "JobRequest deleted successfully.");
+    }
 
-        return new UnlinkUserFromCompanyPayload(true, "User successfully unlinked from company.");
+    // --- INVOICE MUTATIONS ---
+    public async Task<AddInvoicePayload> AddInvoiceAsync(
+        AddInvoiceInput input,
+        ServiceSyncDbContext context)
+    {
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        try
+        {
+            var jobRequest = await context.JobRequests.FindAsync(input.JobRequestId) ?? throw new GraphQLException("JobRequest not found.");
+
+            var newInvoice = new Invoice
+            {
+                JobRequestId = input.JobRequestId,
+                CreatorId = input.CreatorId,
+                PaymentDueDate = input.PaymentDueDate
+            };
+
+            context.Invoices.Add(newInvoice);
+            await context.SaveChangesAsync();
+
+            if (input.LineItems != null && input.LineItems.Count != 0)
+            {
+                foreach (var lineItemInput in input.LineItems)
+                {
+                    var invoiceLineItem = new InvoiceLineItem
+                    {
+                        InvoiceId = newInvoice.Id,
+                        LineItemId = lineItemInput.LineItemId,
+                        Quantity = lineItemInput.Quantity,
+                        PriceOverride = lineItemInput.PriceOverride,
+                        Notes = lineItemInput.Notes
+                    };
+                    context.InvoiceLineItems.Add(invoiceLineItem);
+                }
+                await context.SaveChangesAsync();
+            }
+
+            await transaction.CommitAsync();
+            return new AddInvoicePayload(newInvoice);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new GraphQLException($"An error occurred while creating the invoice: {ex.Message}");
+        }
     }
 }
-
-public record AddCompanyInput(string Name, string? AddressLine1, string? AddressLine2, string? City, string? State, string? ZipCode, string? PhoneNumber, string? LogoUrl);
-public record AddCompanyPayload(Company Company);
-public record UpdateCompanyInput(Guid CompanyId, string? Name, string? AddressLine1, string? City, string? State, string? ZipCode, string? PhoneNumber);
-public record UpdateCompanyPayload(Company Company);
-public record DeleteCompanyInput(Guid CompanyId);
-public record DeleteCompanyPayload(bool Success, string Message);
-public record AddUserInput(Guid Id, string Password);
-public record AddUserPayload(User User);
-public record UpdateUserInput(Guid UserId, string Password);
-public record UpdateUserPayload(User User);
-public record DeleteUserInput(Guid UserId);
-public record DeleteUserPayload(bool Success, string Message);
-public record LinkUserToCompanyInput(Guid CompanyId, Guid ContactId);
-public record LinkUserToCompanyPayload(Company? Company, User? User);
-public record UnlinkUserFromCompanyInput(Guid CompanyId, Guid ContactId);
-public record UnlinkUserFromCompanyPayload(bool Success, string Message);

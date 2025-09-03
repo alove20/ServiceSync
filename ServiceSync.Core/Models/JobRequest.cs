@@ -7,6 +7,7 @@ public class JobRequest
     [Key]
     public Guid Id { get; set; }
     public Guid ClientId { get; set; }
+    public virtual Contact? Client { get; set; }
     [MaxLength(50)]
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

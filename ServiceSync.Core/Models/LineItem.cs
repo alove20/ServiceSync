@@ -5,6 +5,8 @@ public class LineItem
 {
     [Key]
     public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public virtual Company? Company { get; set; }
     [MaxLength(50)]
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; } = 0;

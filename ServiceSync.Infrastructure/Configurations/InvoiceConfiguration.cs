@@ -15,7 +15,7 @@ public class InvoiceConfiguration : IEntityTypeConfiguration<Invoice>
         builder.Property(c => c.EstimateApproved);
         builder.Property(c => c.EstimateApprovedIP);
         builder.Property(c => c.PaymentDueDate);
-        builder.Property(c => c.CreateAt).IsRequired();
+        builder.Property(c => c.CreatedAt).IsRequired();
         builder.Property(c => c.UpdatedAt).IsRequired();
         builder
             .HasMany(i => i.InvoiceLineItems)

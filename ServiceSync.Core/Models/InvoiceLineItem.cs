@@ -7,6 +7,6 @@ public class InvoiceLineItem
     public Guid LineItemId { get; set; }
     public virtual LineItem? LineItem { get; set; }
     public int Quantity { get; set; }
-    public decimal PriceOverride { get; set; }
-    public string Notes { get; set; } = string.Empty;
+    public decimal? PriceOverride { get; set; }
+    public string? Notes { get; set; }
 }

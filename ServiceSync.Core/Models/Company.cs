@@ -24,6 +24,7 @@ public class Company
     public virtual ICollection<CompanyUser> Users { get; set; } = [];
     public virtual ICollection<CompanyClient> Clients { get; set; } = [];
     public virtual ICollection<CompanyJobRequest> JobRequests { get; set; } = [];
+    public virtual ICollection<LineItem> LineItems { get; set; } = [];
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
