@@ -2,22 +2,40 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ServiceSync.Core.Models;
 
-namespace ServiceSync.Infrastructure.Configurations;
-
-public class CompanyConfiguration : IEntityTypeConfiguration<Company>
+namespace ServiceSync.Infrastructure.Configurations
 {
-    public void Configure(EntityTypeBuilder<Company> builder)
+    public class CompanyConfiguration : IEntityTypeConfiguration<Company>
     {
-        builder.HasKey(c => c.Id);
-        builder.Property(c => c.Name).IsRequired().HasMaxLength(255);
-        builder.Property(c => c.AddressLine1).HasMaxLength(255);
-        builder.Property(c => c.AddressLine2).HasMaxLength(255);
-        builder.Property(c => c.City).HasMaxLength(100);
-        builder.Property(c => c.State).HasMaxLength(50);
-        builder.Property(c => c.ZipCode).HasMaxLength(20);
-        builder.Property(c => c.PhoneNumber).HasMaxLength(20);
-        builder.Property(c => c.LogoUrl);
-        builder.Property(c => c.CreatedAt).IsRequired();
-        builder.Property(c => c.UpdatedAt).IsRequired();
+        public void Configure(EntityTypeBuilder<Company> builder)
+        {
+            builder.ToTable("Companies");
+
+            builder.HasKey(c => c.Id);
+
+            builder.Property(c => c.Name)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            builder.Property(c => c.Email)
+                .HasMaxLength(255);
+
+            builder.Property(c => c.PhoneNumber)
+                .HasMaxLength(50);
+
+            // Defines the one-to-many relationship between Company and CompanyResource
+            builder.HasMany(c => c.Resources)
+                .WithOne(cr => cr.Company)
+                .HasForeignKey(cr => cr.CompanyId);
+
+            // Defines the one-to-many relationship between Company and CompanyClient
+            builder.HasMany(c => c.Clients)
+                .WithOne(cc => cc.Company)
+                .HasForeignKey(cc => cc.CompanyId);
+
+            // Defines the one-to-many relationship between Company and CompanyJobRequest
+            builder.HasMany(c => c.JobRequests)
+                .WithOne(cjr => cjr.Company)
+                .HasForeignKey(cjr => cjr.CompanyId);
+        }
     }
 }

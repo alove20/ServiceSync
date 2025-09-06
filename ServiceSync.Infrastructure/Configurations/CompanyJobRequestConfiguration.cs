@@ -2,21 +2,26 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ServiceSync.Core.Models;
 
-namespace ServiceSync.Infrastructure.Configurations;
-
-public class CompanyJobRequestConfiguration : IEntityTypeConfiguration<CompanyJobRequest>
+namespace ServiceSync.Infrastructure.Configurations
 {
-    public void Configure(EntityTypeBuilder<CompanyJobRequest> builder)
+    public class CompanyJobRequestConfiguration : IEntityTypeConfiguration<CompanyJobRequest>
     {
-        builder
-            .HasKey(cc => new { cc.CompanyId, cc.JobRequestId });
-        builder
-           .HasOne(cjr => cjr.Company)
-           .WithMany(c => c.JobRequests)
-           .HasForeignKey(cc => cc.CompanyId);
-        builder
-           .HasOne(cjr => cjr.JobRequest)
-           .WithMany(c => c.Companies)
-           .HasForeignKey(cc => cc.JobRequestId);
+        public void Configure(EntityTypeBuilder<CompanyJobRequest> builder)
+        {
+            builder.ToTable("CompanyJobRequests");
+
+            // Configure the composite primary key
+            builder.HasKey(cjr => new { cjr.CompanyId, cjr.JobRequestId });
+
+            // Configure the relationship to the Company
+            builder.HasOne(cjr => cjr.Company)
+                .WithMany(c => c.JobRequests)
+                .HasForeignKey(cjr => cjr.CompanyId);
+
+            // Configure the relationship to the JobRequest
+            builder.HasOne(cjr => cjr.JobRequest)
+                .WithMany(jr => jr.Companies)
+                .HasForeignKey(cjr => cjr.JobRequestId);
+        }
     }
 }

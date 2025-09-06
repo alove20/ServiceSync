@@ -6,25 +6,22 @@ public class Company
 {
     [Key]
     public Guid Id { get; set; }
-    [MaxLength(255)]
-    public string Name { get; set; } = string.Empty;
-    [MaxLength(255)]
+    public string Name { get; set; }
+    public string? Email { get; set; }
     public string? AddressLine1 { get; set; }
-    [MaxLength(255)]
     public string? AddressLine2 { get; set; }
-    [MaxLength(100)]
     public string? City { get; set; }
-    [MaxLength(50)]
     public string? State { get; set; }
-    [MaxLength(20)]
     public string? ZipCode { get; set; }
-    [MaxLength(20)]
     public string? PhoneNumber { get; set; }
     public string? LogoUrl { get; set; }
-    public virtual ICollection<CompanyUser> Users { get; set; } = [];
-    public virtual ICollection<CompanyClient> Clients { get; set; } = [];
-    public virtual ICollection<CompanyJobRequest> JobRequests { get; set; } = [];
-    public virtual ICollection<LineItem> LineItems { get; set; } = [];
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public virtual ICollection<CompanyResource> Resources { get; set; } = new List<CompanyResource>();
+    public virtual ICollection<CompanyClient> Clients { get; set; } = new List<CompanyClient>();
+    public virtual ICollection<CompanyJobRequest> JobRequests { get; set; } = new List<CompanyJobRequest>();
+    public virtual ICollection<CatalogItem> CatalogItems { get; set; } = new List<CatalogItem>();
+    public virtual ICollection<ItemCategory> ItemCategories { get; set; } = new List<ItemCategory>();
+    public virtual ICollection<EstimateTemplate> EstimateTemplates { get; set; } = new List<EstimateTemplate>();
 }

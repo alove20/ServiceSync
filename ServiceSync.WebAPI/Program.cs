@@ -5,6 +5,7 @@ using ServiceSync.Infrastructure.Context;
 using ServiceSync.WebApi.GraphQL;
 using ServiceSync.WebApi.Services;
 using ServiceSync.WebApi.Settings;
+using ServiceSync.WebApi.GraphQL.Types; // 1. Import the new Types namespace
 using System.Text;
 
 namespace ServiceSync.WebApi
@@ -19,7 +20,18 @@ namespace ServiceSync.WebApi
             builder.Services.Configure<JwtSettings>(jwtSettingsSection);
             var jwtSettings = jwtSettingsSection.Get<JwtSettings>()!;
 
-            // --- Authentication & Authorization Setup ---
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(name: "_myAllowSpecificOrigins",
+                    policy =>
+                    {
+                        policy.AllowAnyOrigin()
+                              .AllowAnyHeader()
+                              .AllowAnyMethod();
+                    });
+            });
+
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -38,59 +50,36 @@ namespace ServiceSync.WebApi
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
                 };
             });
-
             builder.Services.AddAuthorization();
 
-            // --- CORS Policy Setup ---
-            var allowedSpecificOrigins = "_myAllowSpecificOrigins";
-            builder.Services.AddCors(options =>
-            {
-                options.AddPolicy(name: allowedSpecificOrigins,
-                    policy =>
-                    {
-                        policy.AllowAnyOrigin()
-                              .AllowAnyHeader()
-                              .AllowAnyMethod();
-                    });
-            });
-
-            // --- Service Registrations ---
             builder.Services.AddPooledDbContextFactory<ServiceSyncDbContext>(options =>
                 options.UseSqlServer(
                     builder.Configuration.GetConnectionString("DefaultConnection"),
                     sqlServerOptions => sqlServerOptions.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
                 ));
 
-            // *** THIS IS THE NEW LINE ***
-            // Register IHttpContextAccessor to allow access to HttpContext from other services.
-            builder.Services.AddHttpContextAccessor();
-
             builder.Services.AddScoped<IAuthService, AuthService>();
 
-            // --- GraphQL Server Setup ---
+            // --- START OF DEFINITIVE FIX ---
             builder.Services
                .AddGraphQLServer()
                .RegisterDbContextFactory<ServiceSyncDbContext>()
                .AddQueryType<Query>()
                .AddMutationType<Mutation>()
+               .AddType<RoleType>() // 2. Use our explicit RoleType configuration instead of the generic one.
                .AddAuthorization()
                .AddProjections()
                .AddFiltering()
                .AddSorting();
-
-            builder.Services.AddControllers();
+            // --- END OF DEFINITIVE FIX ---
 
             var app = builder.Build();
 
-            // --- HTTP Request Pipeline ---
             app.UseHttpsRedirection();
-
-            app.UseCors(allowedSpecificOrigins);
+            app.UseCors("_myAllowSpecificOrigins");
             app.UseAuthentication();
             app.UseAuthorization();
-
             app.MapGraphQL();
-            app.MapControllers();
             app.Run();
         }
     }

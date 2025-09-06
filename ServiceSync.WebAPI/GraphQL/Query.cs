@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using HotChocolate.Authorization;
+using Microsoft.EntityFrameworkCore;
 using ServiceSync.Core.Models;
 using ServiceSync.Infrastructure.Context;
 using System.Security.Claims;
@@ -7,7 +8,7 @@ namespace ServiceSync.WebApi.GraphQL;
 
 public class Query
 {
-    // --- GetCompanies (Already Secured) ---
+    // --- GetCompanies (Updated with IsActive filter) ---
     [UseProjection]
     [UseFiltering]
     [UseSorting]
@@ -23,9 +24,11 @@ public class Query
             return new List<Company>().AsQueryable();
         }
 
+        var companiesQuery = context.Companies.Where(c => c.IsActive);
+
         if (user.IsInRole("SuperUser"))
         {
-            return context.Companies.AsNoTracking();
+            return companiesQuery.AsNoTracking();
         }
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
@@ -34,16 +37,15 @@ public class Query
             return new List<Company>().AsQueryable();
         }
 
-        return context.Companies
-            .Where(c => c.Users.Any(cu => cu.UserId == userId))
+        return companiesQuery
+            .Where(c => c.Resources.Any(cu => cu.ResourceId == userId))
             .AsNoTracking();
     }
 
-    // --- GetJobRequests (Already Secured) ---
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<JobRequest> GetJobRequests(
+    public IQueryable<JobRequest> GetJobRequestsForCurrentUser(
         [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory,
         [Service] IHttpContextAccessor httpContextAccessor)
     {
@@ -66,8 +68,8 @@ public class Query
             return new List<JobRequest>().AsQueryable();
         }
 
-        var accessibleCompanyIds = context.CompanyUsers
-            .Where(cu => cu.UserId == userId)
+        var accessibleCompanyIds = context.CompanyResources
+            .Where(cu => cu.ResourceId == userId)
             .Select(cu => cu.CompanyId);
 
         return context.JobRequests
@@ -75,11 +77,22 @@ public class Query
             .AsNoTracking();
     }
 
-    // --- GetInvoices (Newly Secured) ---
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Invoice> GetInvoices(
+    public IQueryable<JobRequest> GetJobRequestById(
+    [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory,
+    Guid id)
+    {
+        var context = contextFactory.CreateDbContext();
+        return context.JobRequests.Where(jr => jr.Id == id).AsNoTracking();
+    }
+
+    // --- START OF REFACTOR ---
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Estimate> GetEstimates(
         [Service] IDbContextFactory<ServiceSyncDbContext> contextFactory,
         [Service] IHttpContextAccessor httpContextAccessor)
     {
@@ -88,40 +101,54 @@ public class Query
 
         if (user is null || !user.Identity.IsAuthenticated)
         {
-            return new List<Invoice>().AsQueryable();
+            return new List<Estimate>().AsQueryable();
         }
 
         if (user.IsInRole("SuperUser"))
         {
-            return context.Invoices.AsNoTracking();
+            return context.Estimates.AsNoTracking();
         }
 
         var userIdClaim = user.FindFirst(ClaimTypes.NameIdentifier);
         if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
         {
-            return new List<Invoice>().AsQueryable();
+            return new List<Estimate>().AsQueryable();
         }
 
-        var accessibleCompanyIds = context.CompanyUsers
-            .Where(cu => cu.UserId == userId)
+        var accessibleCompanyIds = context.CompanyResources
+            .Where(cu => cu.ResourceId == userId)
             .Select(cu => cu.CompanyId);
 
-        return context.Invoices
-            .Where(i => i.JobRequest.Companies.Any(cjr => accessibleCompanyIds.Contains(cjr.CompanyId)))
+        return context.Estimates
+            .Where(e => e.JobRequest.Companies.Any(cjr => accessibleCompanyIds.Contains(cjr.CompanyId)))
             .AsNoTracking();
     }
 
-    // --- Other Unsecured Queries ---
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<Contact> GetContacts(ServiceSyncDbContext context) =>
-        context.Contacts.AsNoTracking();
+    public IQueryable<CatalogItem> GetCatalogItems([Service] IDbContextFactory<ServiceSyncDbContext> contextFactory) =>
+        contextFactory.CreateDbContext().CatalogItems.AsNoTracking();
+
+    [Authorize]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<ItemCategory> GetItemCategories([Service] IDbContextFactory<ServiceSyncDbContext> contextFactory) =>
+        contextFactory.CreateDbContext().ItemCategories.AsNoTracking();
+
+    [Authorize]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<EstimateTemplate> GetEstimateTemplates([Service] IDbContextFactory<ServiceSyncDbContext> contextFactory) =>
+        contextFactory.CreateDbContext().EstimateTemplates.AsNoTracking();
+    // --- END OF REFACTOR ---
 
     [UseProjection]
     [UseFiltering]
     [UseSorting]
-    public IQueryable<LineItem> GetLineItems(ServiceSyncDbContext context) =>
-        context.LineItems.AsNoTracking();
+    public IQueryable<Contact> GetContacts([Service] IDbContextFactory<ServiceSyncDbContext> contextFactory) =>
+        contextFactory.CreateDbContext().Contacts.AsNoTracking();
 }
 

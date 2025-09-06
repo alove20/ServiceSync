@@ -8,7 +8,7 @@ using ServiceSync.WebApi.Settings;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Text.Json; // 1. Add this for JSON serialization
+using System.Text.Json;
 
 namespace ServiceSync.WebApi.Services;
 
@@ -26,6 +26,7 @@ public class AuthService : IAuthService
     public async Task<User> RegisterUserAsync(string firstName, string lastName, string email, string password)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
+
         var existingContact = await context.Contacts.FirstOrDefaultAsync(c => c.Email == email);
         if (existingContact != null)
         {
@@ -36,7 +37,7 @@ public class AuthService : IAuthService
         var newUser = new User
         {
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
-            Role = Role.User, // New users get the global 'User' role
+            Role = Role.User,
             Contact = newContact
         };
 
@@ -49,16 +50,18 @@ public class AuthService : IAuthService
     {
         await using var context = await _contextFactory.CreateDbContextAsync();
 
-        // 2. Eagerly load the User and their CompanyUser links
+        // --- START OF THE FIX ---
+        // The query now includes the Company navigation property so we can check if it's active.
         var contact = await context.Contacts
             .Include(c => c.User)
-            .Include(c => c.UserCompanies) // <-- This is the key addition
+            .Include(c => c.ResourceCompanies)
+                .ThenInclude(cr => cr.Company)
             .FirstOrDefaultAsync(c => c.Email == email);
+        // --- END OF THE FIX ---
 
         if (contact?.User?.PasswordHash == null) return null;
         if (!BCrypt.Net.BCrypt.Verify(password, contact.User.PasswordHash)) return null;
 
-        // 3. Pass the full contact object (with company links) to the token generator
         return GenerateJwtToken(contact.User, contact);
     }
 
@@ -67,10 +70,15 @@ public class AuthService : IAuthService
         var tokenHandler = new JwtSecurityTokenHandler();
         var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
 
-        // 4. Create a list of company-specific roles
-        var companyRoles = contact.UserCompanies
+        // --- START OF THE FIX ---
+        // Filter the roles to include only those from active companies before serializing.
+        var companyRolesData = contact.ResourceCompanies
+            .Where(cr => cr.Company.IsActive)
             .Select(cu => new { CompanyId = cu.CompanyId.ToString(), Role = cu.Role.ToString() })
             .ToList();
+        // --- END OF THE FIX ---
+
+        var companyRolesJson = JsonSerializer.Serialize(companyRolesData);
 
         var claims = new List<Claim>
         {
@@ -78,16 +86,14 @@ public class AuthService : IAuthService
             new Claim(JwtRegisteredClaimNames.Email, contact.Email),
             new Claim(JwtRegisteredClaimNames.Name, $"{contact.FirstName} {contact.LastName}"),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-            // 5. Add the user's GLOBAL role (e.g., "SuperUser")
-            new Claim(ClaimTypes.Role, user.Role.ToString()), 
-            // 6. Add the list of company-specific roles as a custom JSON claim
-            new Claim("company_roles", JsonSerializer.Serialize(companyRoles), JsonClaimValueTypes.JsonArray)
+            new Claim(ClaimTypes.Role, user.Role.ToString()),
+            new Claim("company_roles", companyRolesJson)
         };
 
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddHours(8), // Extend token lifetime
+            Expires = DateTime.UtcNow.AddHours(8),
             Issuer = _jwtSettings.Issuer,
             Audience = _jwtSettings.Audience,
             SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)

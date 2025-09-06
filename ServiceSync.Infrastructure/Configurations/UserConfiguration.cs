@@ -2,27 +2,32 @@
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ServiceSync.Core.Models;
 
-namespace ServiceSync.Infrastructure.Configurations;
-
-public class UserConfiguration : IEntityTypeConfiguration<User>
+namespace ServiceSync.Infrastructure.Configurations
 {
-    public void Configure(EntityTypeBuilder<User> builder)
+    public class UserConfiguration : IEntityTypeConfiguration<User>
     {
-        builder.HasKey(c => c.Id);
-        builder.Property(c => c.PasswordHash).IsRequired().HasMaxLength(255);
-        builder.Property(c => c.Role).IsRequired().HasMaxLength(50);
-        builder.Property(c => c.IsEmailVerified).IsRequired();
-        builder.Property(c => c.VerificationToken).HasMaxLength(255);
-        builder.Property(c => c.VerificationTokenExpiresAt);
-        builder.Property(c => c.CreatedAt).IsRequired();
-        builder.Property(c => c.UpdatedAt).IsRequired();
-        builder.HasOne(u => u.Contact)
-            .WithOne(c => c.User)
-            .HasForeignKey<Contact>(c => c.Id);
-        builder
-            .HasOne(u => u.Contact)
-            .WithOne(c => c.User)
-            .HasForeignKey<User>(u => u.Id)
-            .HasPrincipalKey<Contact>(c => c.Id);
+        public void Configure(EntityTypeBuilder<User> builder)
+        {
+            builder.ToTable("Users");
+
+            // The primary key for a User is its Id.
+            builder.HasKey(u => u.Id);
+
+            // This configures the one-to-one relationship.
+            // A User has one Contact, and a Contact has one User.
+            // The foreign key is on the User table, and it's the User's own Id column.
+            builder.HasOne(u => u.Contact)
+                .WithOne(c => c.User)
+                .HasForeignKey<User>(u => u.Id);
+
+            builder.Property(u => u.PasswordHash)
+                .IsRequired();
+
+            // Configures the Role enum to be stored as an integer in the database,
+            // which matches your existing schema.
+            builder.Property(u => u.Role)
+                .IsRequired()
+                .HasConversion<int>();
+        }
     }
 }

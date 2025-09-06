@@ -2,12 +2,12 @@
 
 namespace ServiceSync.Core.Models;
 
-public class JobRequestEstimate
+public class ResourceJobRequest
 {
+    public Guid ResourceId { get; set; }
+    [ForeignKey("ResourceId")]
+    public virtual Contact Resource { get; set; }
     public Guid JobRequestId { get; set; }
     [ForeignKey("JobRequestId")]
     public virtual JobRequest JobRequest { get; set; }
-    public Guid EstimateId { get; set; }
-    [ForeignKey("EstimateId")]
-    public virtual Estimate Estimate { get; set; }
 }
